@@ -1,0 +1,27 @@
+```{r}
+library(tidyverse)
+library(sf)
+library(tmap)
+library(janitor)
+library(spatstat)
+library(spdep)
+library(RColorBrewer)
+library(tmaptools)
+library(here)
+```
+loading datasets
+```{r}
+no2 <-  read.csv(here("CSV/LAEI2016_2016_NO2.csv")) %>% 
+  st_as_sf(., coords = c("x", "y"), crs = 27700) 
+
+pm10 <-  read.csv(here("CSV/LAEI2016_2016_PM10.csv")) %>% 
+  st_as_sf(., coords = c("x", "y"), crs = 27700) 
+
+pm25 <-  read.csv(here("CSV/LAEI2016_2016_PM25.csv")) %>% 
+  st_as_sf(., coords = c("x", "y"), crs = 27700) 
+
+shape <- st_read(here("statistical-gis-boundaries-london 3", "ESRI", "London_Borough_Excluding_MHW.shp")) %>% 
+  st_transform(., 27700) 
+
+```
+
