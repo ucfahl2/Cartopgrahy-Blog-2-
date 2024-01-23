@@ -1,0 +1,153 @@
+```{r}
+library(tidyverse)
+library(sf)
+library(tmap)
+library(janitor)
+library(spatstat)
+library(spdep)
+library(RColorBrewer)
+library(tmaptools)
+library(here)
+library(purrr)
+```
+
+```{r}
+
+aggregate_and_transform <- function(file_path, resolution = 100, target_crs = 27700) {
+  
+  data <- read.csv(file_path)
+  # convert to an sf object
+  sf_data <- st_as_sf(data, coords = c("x", "y"), crs = 27700)
+  
+  # round coordinates to nearest aggregation resolution (100m)
+  data$grid_x <- round(data$x / resolution) * resolution
+  data$grid_y <- round(data$y / resolution) * resolution
+  
+  # aggregate pollutant concentrations by new resolution
+  aggregated_data <- data %>%
+    group_by(grid_x, grid_y) %>%
+    summarise(mean_conc = mean(conc, na.rm = TRUE)) %>%
+    ungroup()
+  
+
+  aggregated_data <- st_as_sf(aggregated_data, coords = c("grid_x", "grid_y"), crs = st_crs(sf_data))
+  
+  # transform the coordinates of the aggregated data
+  aggregated_data <- st_transform(aggregated_data, crs = target_crs)
+  
+  # Return the transformed and aggregated data
+  aggregated_data
+}
+
+no2 <- aggregate_and_transform(here("CSV/LAEI2016_2016_NO2.csv"))
+pm10<- aggregate_and_transform(here("CSV/LAEI2016_2016_PM10.csv"))
+pm25 <- aggregate_and_transform(here("CSV/LAEI2016_2016_PM25.csv"))
+
+
+air_no2_pm25 <- st_join(no2, pm25, join = st_intersects)
+air<- st_join(air_no2_pm25, pm10, join = st_intersects)
+
+names(air)[names(air) == 'mean_conc.x'] <- 'no2'
+names(air)[names(air) == 'mean_conc.y'] <- 'pm25'
+names(air)[names(air) == 'mean_conc'] <- 'pm10'
+
+shape <- st_read(here("statistical-gis-boundaries-london 3", "ESRI", "London_Borough_Excluding_MHW.shp")) %>% 
+  st_transform(., 27700) 
+
+```
+
+```{r}
+library(purrr)
+
+# function for interpolating the AQI for a single pollutant
+calculate_aqi <- function(conc, breakpoints, index_values) {
+  if (is.na(conc)) {
+    return(NA)
+  }
+  
+  # set the breakpoints 
+  lower_breakpoint <- max(breakpoints[breakpoints < conc], na.rm = TRUE)
+  upper_breakpoint <- min(breakpoints[breakpoints >= conc], na.rm = TRUE)
+
+  lower_index <- index_values[which(breakpoints == lower_breakpoint)]
+  upper_index <- index_values[which(breakpoints == upper_breakpoint)]
+  
+  # Linear interpolation to calculate the index
+  aqi <- (conc - lower_breakpoint) / (upper_breakpoint - lower_breakpoint) * 
+         (upper_index - lower_index) + lower_index
+  
+  return(aqi)
+}
+
+get_max_aqi_index <- function(no2, pm25, pm10) {
+  # define the breakpoints and index values for each pollutant
+  breakpoints <- list(
+    no2 = c(0, 67, 134, 200, 267, 334, 400, 467, 534, 600, Inf),
+    pm25 = c(0, 12, 24, 36, 42, 47, 53, 58, 64, 70, Inf),
+    pm10 = c(0, 17, 34, 51, 59, 67, 75, 83, 91, 100, Inf)
+  )
+  
+  index_values <- list(
+    no2 = 1:11,
+    pm25 = 1:11,
+    pm10 = 1:11
+  )
+  
+  # calculate the AQI for each pollutant
+  aqi_no2 <- calculate_aqi(no2, breakpoints$no2, index_values$no2)
+  aqi_pm25 <- calculate_aqi(pm25, breakpoints$pm25, index_values$pm25)
+  aqi_pm10 <- calculate_aqi(pm10, breakpoints$pm10, index_values$pm10)
+  
+  # return the maximum AQI
+  max(c(aqi_no2, aqi_pm25, aqi_pm10), na.rm = TRUE)
+}
+
+# drop the geometry 
+air_nogeo <- st_drop_geometry(air)
+
+# apply the function
+air_nogeo$max_aqi_index <- pmap_dbl(air_nogeo[, c("no2", "pm25", "pm10")], 
+                                    ~ get_max_aqi_index(..1, ..2, ..3))
+
+
+
+
+```
+```{r}
+#add geo
+air_combined <- cbind(air, air_nogeo) %>% 
+  select(no2, pm25, pm10, max_aqi_index)
+```
+
+```{r}
+#plot
+library(sf)
+library(raster)
+library(tmap)
+
+
+
+# create an empty raster 
+r <- raster(extent(shape), nrow=100, ncol=100) 
+res(r) <- c(100, 100)
+
+# rasterize the point data
+r <- rasterize(air_combined, r, field="max_aqi_index")
+
+# plot the raster 
+tm_shape(r) + 
+  tm_raster(style="cont", palette="-RdYlBu", title="Max AQI Index") +
+  tm_shape(shape) +
+  tm_borders()
+
+```
+```{r}
+air_combined$wkt <- st_as_text(air_combined$geometry)
+
+# convert sf object to a dataframe before using select
+air_combined_df <- as.data.frame(air_combined) %>%
+  dplyr::select(-geometry)
+
+write.csv(air_combined_df, "air_combined_with_geometry.csv", row.names = FALSE)
+```
+
