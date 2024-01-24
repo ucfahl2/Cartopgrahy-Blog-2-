@@ -1,0 +1,41 @@
+```{r}
+library(tidyverse)
+library(sf)
+library(tmap)
+library(janitor)
+library(spatstat)
+library(spdep)
+library(RColorBrewer)
+library(tmaptools)
+library(here)
+library(purrr)
+```
+
+```{r}
+dp <- read_csv(here("File_1_-_IMD2019_Index_of_Multiple_Deprivation (1).csv")) %>% 
+  clean_names()
+lsoa <- st_read(here("statistical-gis-boundaries-london 3", "ESRI", "LSOA_2011_London_gen_MHW.shp")) %>% 
+  st_transform(., 27700) 
+```
+```{r}
+joined_data <- left_join(lsoa, dp, by = c("LSOA11CD" = "lsoa_code_2011" )) %>% 
+  dplyr::select(LSOA11CD, index_of_multiple_deprivation_imd_decile, geometry)
+#write csv
+joined_data$wkt <- st_as_text(joined_data$geometry)
+
+# convert sf object to a dataframe before using select
+joined_data_df <- as.data.frame(joined_data) %>%
+  dplyr::select(-geometry)
+
+write.csv(joined_data_df, "imd_with_geometry.csv", row.names = FALSE)
+
+#plot the data sets
+library(ggplot2)
+dp_map <- ggplot(joined_data, aes(fill = index_of_multiple_deprivation_imd_decile)) +
+  geom_sf() +
+ scale_fill_viridis_c() +  
+  labs(title = "IMD ", fill = "index_of_multiple_deprivation_imd_decile")
+
+dp_map
+```
+
