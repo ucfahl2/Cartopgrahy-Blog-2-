@@ -47,7 +47,7 @@ imd_map <- ggplot(imd_join, aes(fill = index_of_multiple_deprivation_imd_decile)
   labs(title = "Index of Multiple Deprivation ", fill = "IMD Decile") +
 
 #combine with borough
-  geom_sf(data = borough, color = "white", fill = NA, size = 0.5) +
+#  geom_sf(data = borough, color = "white", fill = NA, size = 0.5) +
 
 # Remove the grid
   theme_void() +

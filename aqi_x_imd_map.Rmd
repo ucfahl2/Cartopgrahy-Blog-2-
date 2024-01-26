@@ -26,8 +26,8 @@ summary(aqi_x_imd)
 ```{r create bivariate data}
 bivar <- biscale::bi_class(
   aqi_x_imd, 
-  x = average_max_aqi_decile_flipped, 
-  y = index_of_multiple_deprivation_imd_decile, 
+  x = average_max_aqi_decile, 
+  y = index_of_multiple_deprivation_imd_decile_flipped, 
   style = "fisher", 
   dim = 4
   )
@@ -35,38 +35,14 @@ bivar <- biscale::bi_class(
 summary(bivar)
 ```
 
-```{r}
+```{r bivar 1}
 # create map
 map <- ggplot() +
-  geom_sf(data = bivar, mapping = aes(fill = bi_class), color = "transparent", size = 0, show.legend = FALSE) +
-  bi_scale_fill(pal = "BlueGold", dim = 4) + bi_theme()
-#  labs(title = "AQI vs IMD in London")
-
-#combine with borough
-#  geom_sf(data = borough, color = "white", fill = NA)
-
-# create legend
-legend <- bi_legend(pal = "BlueGold",
-                    dim = 4,
-                    xlab = "AQI",
-                    ylab = "IMD",
-                    size = 6.5)
-
-# combine map with legend
-finalPlot <- cowplot::ggdraw() +
-  draw_plot(map, 0, 0, 1, 1) +
-  draw_plot(legend, 0, 0, 0.25, 0.25)
-
-# plot map
-plot(finalPlot)
-
-```
-```{r}
-# create map
-map <- ggplot() +
-  geom_sf(data = bivar, mapping = aes(fill = bi_class), color = "transparent", size = 0, show.legend = FALSE) +
-  bi_scale_fill(pal = "BlueYl", dim = 4) + bi_theme() 
-#  labs(title = "AQI vs IMD in London")
+  geom_sf(data = bivar, aes(fill = bi_class), color = "transparent", size = 0, show.legend = FALSE) +
+  bi_scale_fill(pal = "BlueYl", dim = 4) + bi_theme() +
+  
+  # Add borough layer
+  geom_sf(data = borough, color = "white", fill = NA, size = 0.5)
 
 # create legend
 legend <- bi_legend(pal = "BlueYl",
@@ -82,5 +58,32 @@ finalPlot <- cowplot::ggdraw() +
 
 # plot map
 plot(finalPlot)
+
+```
+
+```{r}
+# create map
+map <- ggplot() +
+  geom_sf(data = bivar, aes(fill = bi_class), color = "transparent", size = 0, show.legend = FALSE) +
+  bi_scale_fill(pal = "PurpleOr", dim = 4) + bi_theme() +
+  
+  # Add borough layer
+  geom_sf(data = borough, color = "white", fill = NA, size = 0.5)
+
+# create legend
+legend <- bi_legend(pal = "PurpleOr",
+                    dim = 4,
+                    xlab = "AQI",
+                    ylab = "IMD",
+                    size = 6.5)
+
+# combine map with legend
+finalPlot <- cowplot::ggdraw() +
+  draw_plot(map, 0, 0, 1, 1) +
+  draw_plot(legend, 0, 0, 0.25, 0.25)
+
+# plot map
+plot(finalPlot)
+
 ```
 

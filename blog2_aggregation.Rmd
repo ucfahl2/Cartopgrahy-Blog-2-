@@ -186,7 +186,7 @@ aqi_map <- ggplot(air_combined_by_lsoa, aes(fill = average_max_aqi_decile_flippe
   labs(title = "Air Quality Index ", fill = "AQI Decile flipped") +
 
 #combine with borough
-  geom_sf(data = borough, color = "white", fill = NA, size = 0.5) +
+#  geom_sf(data = borough, color = "white", fill = NA, size = 0.5) +
 
 # Remove the grid
   theme_void() +
