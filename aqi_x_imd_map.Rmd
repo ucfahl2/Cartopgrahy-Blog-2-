@@ -1,0 +1,86 @@
+```{r}
+library(biscale)
+library(ggplot2)
+library(cowplot)
+```
+
+
+```{r}
+aqi_x_imd <- st_join(air_combined_by_lsoa, imd_join, by = "LSOA11CD") %>%
+  select(-LSOA11CD.y) %>%
+  rename(., LSOA11CD = LSOA11CD.x)
+
+summary(aqi_x_imd)
+```
+
+```{r}
+#tm_shape(aqi_x_imd) +
+  tm_bubbles(size = "average_max_aqi_decile", col = "index_of_multiple_deprivation_imd_decile",
+             title.size = "Average Max AQI Decile", title.col = "IMD Decile",
+             palette = "RdYlBu", style = "jenks", border.col = "black") +
+  tm_borders(lwd = 0.5) +
+  tm_layout(title = "Bivariate Map")
+
+```
+
+```{r create bivariate data}
+bivar <- biscale::bi_class(
+  aqi_x_imd, 
+  x = average_max_aqi_decile_flipped, 
+  y = index_of_multiple_deprivation_imd_decile, 
+  style = "fisher", 
+  dim = 4
+  )
+
+summary(bivar)
+```
+
+```{r}
+# create map
+map <- ggplot() +
+  geom_sf(data = bivar, mapping = aes(fill = bi_class), color = "transparent", size = 0, show.legend = FALSE) +
+  bi_scale_fill(pal = "BlueGold", dim = 4) + bi_theme()
+#  labs(title = "AQI vs IMD in London")
+
+#combine with borough
+#  geom_sf(data = borough, color = "white", fill = NA)
+
+# create legend
+legend <- bi_legend(pal = "BlueGold",
+                    dim = 4,
+                    xlab = "AQI",
+                    ylab = "IMD",
+                    size = 6.5)
+
+# combine map with legend
+finalPlot <- cowplot::ggdraw() +
+  draw_plot(map, 0, 0, 1, 1) +
+  draw_plot(legend, 0, 0, 0.25, 0.25)
+
+# plot map
+plot(finalPlot)
+
+```
+```{r}
+# create map
+map <- ggplot() +
+  geom_sf(data = bivar, mapping = aes(fill = bi_class), color = "transparent", size = 0, show.legend = FALSE) +
+  bi_scale_fill(pal = "BlueYl", dim = 4) + bi_theme() 
+#  labs(title = "AQI vs IMD in London")
+
+# create legend
+legend <- bi_legend(pal = "BlueYl",
+                    dim = 4,
+                    xlab = "AQI",
+                    ylab = "IMD",
+                    size = 6.5)
+
+# combine map with legend
+finalPlot <- cowplot::ggdraw() +
+  draw_plot(map, 0, 0, 1, 1) +
+  draw_plot(legend, 0, 0, 0.25, 0.25)
+
+# plot map
+plot(finalPlot)
+```
+

@@ -12,7 +12,6 @@ library(purrr)
 ```
 
 ```{r}
-
 aggregate_and_transform <- function(file_path, resolution = 100, target_crs = 27700) {
   
   data <- read.csv(file_path)
@@ -29,7 +28,6 @@ aggregate_and_transform <- function(file_path, resolution = 100, target_crs = 27
     summarise(mean_conc = mean(conc, na.rm = TRUE)) %>%
     ungroup()
   
-
   aggregated_data <- st_as_sf(aggregated_data, coords = c("grid_x", "grid_y"), crs = st_crs(sf_data))
   
   # transform the coordinates of the aggregated data
@@ -39,10 +37,9 @@ aggregate_and_transform <- function(file_path, resolution = 100, target_crs = 27
   aggregated_data
 }
 
-no2 <- aggregate_and_transform(here("CSV/LAEI2016_2016_NO2.csv"))
-pm10<- aggregate_and_transform(here("CSV/LAEI2016_2016_PM10.csv"))
-pm25 <- aggregate_and_transform(here("CSV/LAEI2016_2016_PM25.csv"))
-
+no2 <- aggregate_and_transform(here("data/CSV/LAEI2016_2016_NO2.csv"))
+pm10<- aggregate_and_transform(here("data/CSV/LAEI2016_2016_PM10.csv"))
+pm25 <- aggregate_and_transform(here("data/CSV/LAEI2016_2016_PM25.csv"))
 
 air_no2_pm25 <- st_join(no2, pm25, join = st_intersects)
 air<- st_join(air_no2_pm25, pm10, join = st_intersects)
@@ -50,10 +47,13 @@ air<- st_join(air_no2_pm25, pm10, join = st_intersects)
 names(air)[names(air) == 'mean_conc.x'] <- 'no2'
 names(air)[names(air) == 'mean_conc.y'] <- 'pm25'
 names(air)[names(air) == 'mean_conc'] <- 'pm10'
+```
 
-shape <- st_read(here("statistical-gis-boundaries-london 3", "ESRI", "London_Borough_Excluding_MHW.shp")) %>% 
+```{r call the shapefile}
+lsoa <- st_read(here("data/london_lsoa/LSOA_2011_London_gen_MHW.shp")) %>% 
+  st_transform(., 27700)
+borough <- st_read(here("data/london_lsoa/London_Borough_Excluding_MHW.shp")) %>% 
   st_transform(., 27700) 
-
 ```
 
 ```{r}
@@ -108,11 +108,8 @@ air_nogeo <- st_drop_geometry(air)
 # apply the function
 air_nogeo$max_aqi_index <- pmap_dbl(air_nogeo[, c("no2", "pm25", "pm10")], 
                                     ~ get_max_aqi_index(..1, ..2, ..3))
-
-
-
-
 ```
+
 ```{r}
 #add geo
 air_combined <- cbind(air, air_nogeo) %>% 
@@ -125,10 +122,8 @@ library(sf)
 library(raster)
 library(tmap)
 
-
-
 # create an empty raster 
-r <- raster(extent(shape), nrow=100, ncol=100) 
+r <- raster(extent(borough), nrow=100, ncol=100) 
 res(r) <- c(100, 100)
 
 # rasterize the point data
@@ -137,17 +132,71 @@ r <- rasterize(air_combined, r, field="max_aqi_index")
 # plot the raster 
 tm_shape(r) + 
   tm_raster(style="cont", palette="-RdYlBu", title="Max AQI Index") +
-  tm_shape(shape) +
+  tm_shape(borough) +
   tm_borders()
 
 ```
+
 ```{r}
-air_combined$wkt <- st_as_text(air_combined$geometry)
+#air_combined$wkt <- st_as_text(air_combined$geometry)
 
 # convert sf object to a dataframe before using select
-air_combined_df <- as.data.frame(air_combined) %>%
+#air_combined_df <- as.data.frame(air_combined) %>%
+#  dplyr::select(-geometry) 
+
+#write.csv(air_combined_df, "air_combined_with_geometry.csv", row.names = FALSE)
+```
+
+```{r intersect to lsoa}
+#air_combined <- st_transform(air_combined, 27700)
+
+#intersect with lsoa data
+air_combined_intersect <- 
+  #st_as_sf(air_combined, wkt = 'wkt') %>%
+  st_intersection(lsoa, air_combined)
+```
+```{r dissolve/group by lsoa unit}
+# group aqi value by lsoa unit
+average_max_aqi_by_lsoa <- air_combined_intersect %>%
+  group_by(LSOA11CD) %>%
+  summarize(average_max_aqi = mean(max_aqi_index, na.rm = TRUE)) %>%
+  mutate(average_max_aqi_decile = as.numeric(ntile(average_max_aqi, 10))) %>%
+  as.data.frame(average_max_aqi_by_lsoa) %>%
   dplyr::select(-geometry)
 
-write.csv(air_combined_df, "air_combined_with_geometry.csv", row.names = FALSE)
+# add flipped decile column
+max_decile <- max(average_max_aqi_by_lsoa$average_max_aqi_decile)
+average_max_aqi_by_lsoa <- average_max_aqi_by_lsoa %>%
+  mutate(average_max_aqi_decile_flipped = max_decile + 1 - average_max_aqi_decile)
+
+summary(average_max_aqi_by_lsoa)
 ```
+
+```{r}
+air_combined_by_lsoa <- left_join(lsoa, average_max_aqi_by_lsoa, by = "LSOA11CD") %>%
+  dplyr::select(LSOA11CD, LSOA11NM, average_max_aqi, average_max_aqi_decile, average_max_aqi_decile_flipped)
+
+summary(air_combined_by_lsoa)
+```
+```{r}
+#plot the data sets
+aqi_map <- ggplot(air_combined_by_lsoa, aes(fill = average_max_aqi_decile_flipped)) +
+  geom_sf(color = "transparent") +
+  scale_fill_viridis_c(option = "plasma") +
+  labs(title = "Air Quality Index ", fill = "AQI Decile flipped") +
+
+#combine with borough
+  geom_sf(data = borough, color = "white", fill = NA, size = 0.5) +
+
+# Remove the grid
+  theme_void() +
+
+# Add note
+  annotate("text", x = -Inf, y = -Inf, hjust = 0, vjust = -0.25, 
+         label = "Note: 1 is the most polluted, 10 is the lest polluted (flipped).",
+         size = 3, color = "black")
+  
+aqi_map
+```
+
 
