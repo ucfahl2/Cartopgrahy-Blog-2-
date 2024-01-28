@@ -2,6 +2,7 @@
 library(biscale)
 library(ggplot2)
 library(cowplot)
+library(dplyr)
 ```
 
 
@@ -34,34 +35,7 @@ bivar <- biscale::bi_class(
 
 summary(bivar)
 ```
-
-```{r bivar 1}
-# create map
-map <- ggplot() +
-  geom_sf(data = bivar, aes(fill = bi_class), color = "transparent", size = 0, show.legend = FALSE) +
-  bi_scale_fill(pal = "BlueYl", dim = 4) + bi_theme() +
-  
-  # Add borough layer
-  geom_sf(data = borough, color = "white", fill = NA, size = 0.5)
-
-# create legend
-legend <- bi_legend(pal = "BlueYl",
-                    dim = 4,
-                    xlab = "AQI",
-                    ylab = "IMD",
-                    size = 6.5)
-
-# combine map with legend
-finalPlot <- cowplot::ggdraw() +
-  draw_plot(map, 0, 0, 1, 1) +
-  draw_plot(legend, 0, 0, 0.25, 0.25)
-
-# plot map
-plot(finalPlot)
-
-```
-
-```{r}
+```{r AQI_x_IMD bivar map}
 # create map
 map <- ggplot() +
   geom_sf(data = bivar, aes(fill = bi_class), color = "transparent", size = 0, show.legend = FALSE) +
@@ -86,4 +60,77 @@ finalPlot <- cowplot::ggdraw() +
 plot(finalPlot)
 
 ```
+```{r}
+ggsave("D:/Fajrun/MSc Plan/3. Universities/University College London/Lectures/T2 GEOG0162 CDV/W3/Cartography-Blog-2/output/AQI_x_IMD_map2.jpg", plot = finalPlot, width = 6.25, height = 4.25, dpi = 200)
 
+```
+
+```{r make borough clipper}
+#make borough clipper
+borough_Barking_Dagenham <- borough %>%
+  filter(NAME %in% c("Barking and Dagenham"))
+
+borough_Tower_Hamlets <- borough %>%
+  filter(NAME %in% c("Tower Hamlets"))
+
+borough_Kensington_Chelsea <- borough %>%
+  filter(NAME %in% c("Kensington and Chelsea"))
+```
+
+```{r borough_Barking_Dagenham map}
+# Clip bivar with borough_Barking_Dagenham
+bivar_Barking_Dagenham <- st_intersection(bivar, borough_Barking_Dagenham)
+
+# create map
+map <- ggplot() +
+  geom_sf(data = bivar_Barking_Dagenham, aes(fill = bi_class), color = "transparent", size = 0, show.legend = FALSE) +
+  bi_scale_fill(pal = "PurpleOr", dim = 4) + bi_theme() +
+  
+  # Add borough layer
+  geom_sf(data = borough_Barking_Dagenham, color = "white", fill = NA, size = 0.5)
+
+# plot map
+plot(map)
+
+# save the map
+ggsave("D:/Fajrun/MSc Plan/3. Universities/University College London/Lectures/T2 GEOG0162 CDV/W3/Cartography-Blog-2/output/bivar_Barking_Dagenham.jpg", plot = map, width = 6.25, height = 4.25, dpi = 300)
+
+```
+```{r borough_Tower_Hamlets map}
+# Clip bivar with borough_Tower_Hamlets
+bivar_Tower_Hamlets <- st_intersection(bivar, borough_Tower_Hamlets)
+
+# create map
+map <- ggplot() +
+  geom_sf(data = bivar_Tower_Hamlets, aes(fill = bi_class), color = "transparent", size = 0, show.legend = FALSE) +
+  bi_scale_fill(pal = "PurpleOr", dim = 4) + bi_theme() +
+  
+  # Add borough layer
+  geom_sf(data = borough_Tower_Hamlets, color = "white", fill = NA, size = 0.5)
+
+# plot map
+plot(map)
+
+# save the map
+ggsave("D:/Fajrun/MSc Plan/3. Universities/University College London/Lectures/T2 GEOG0162 CDV/W3/Cartography-Blog-2/output/bivar_Tower_Hamlets.jpg", plot = map, width = 6.25, height = 4.25, dpi = 300)
+
+```
+```{r borough_Kensington_Chelsea map}
+# Clip bivar with borough_Kensington_Chelsea
+bivar_Kensington_Chelsea <- st_intersection(bivar, borough_Kensington_Chelsea)
+
+# create map
+map <- ggplot() +
+  geom_sf(data = bivar_Kensington_Chelsea, aes(fill = bi_class), color = "transparent", size = 0, show.legend = FALSE) +
+  bi_scale_fill(pal = "PurpleOr", dim = 4) + bi_theme() +
+  
+  # Add borough layer
+  geom_sf(data = borough_Kensington_Chelsea, color = "white", fill = NA, size = 0.5)
+
+# plot map
+plot(map)
+
+# save the map
+ggsave("D:/Fajrun/MSc Plan/3. Universities/University College London/Lectures/T2 GEOG0162 CDV/W3/Cartography-Blog-2/output/bivar_Kensington_Chelsea.jpg", plot = map, width = 6.25, height = 4.25, dpi = 300)
+
+```

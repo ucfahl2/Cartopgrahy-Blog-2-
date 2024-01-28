@@ -180,23 +180,26 @@ summary(air_combined_by_lsoa)
 ```
 ```{r}
 #plot the data sets
-aqi_map <- ggplot(air_combined_by_lsoa, aes(fill = average_max_aqi_decile_flipped)) +
+aqi_map <- ggplot(air_combined_by_lsoa, aes(fill = average_max_aqi_decile)) +
   geom_sf(color = "transparent") +
-  scale_fill_viridis_c(option = "plasma") +
-  labs(title = "Air Quality Index ", fill = "AQI Decile flipped") +
+  scale_fill_viridis_c(option = "plasma", direction = -1) +
+  labs(title = "Air Quality Index ", fill = "AQI Decile") +
 
 #combine with borough
-#  geom_sf(data = borough, color = "white", fill = NA, size = 0.5) +
+  geom_sf(data = borough, color = "white", fill = NA, size = 0.5) +
 
 # Remove the grid
   theme_void() +
 
 # Add note
   annotate("text", x = -Inf, y = -Inf, hjust = 0, vjust = -0.25, 
-         label = "Note: 1 is the most polluted, 10 is the lest polluted (flipped).",
+         label = "Note: 1 is the least polluted, 10 is the most polluted.",
          size = 3, color = "black")
   
 aqi_map
 ```
+```{r}
+ggsave("D:/Fajrun/MSc Plan/3. Universities/University College London/Lectures/T2 GEOG0162 CDV/W3/Cartography-Blog-2/output/AQI_map2.jpg", plot = aqi_map, width = 6.25, height = 4.25, dpi = 200)
 
+```
 

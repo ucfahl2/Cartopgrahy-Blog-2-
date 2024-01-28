@@ -36,29 +36,39 @@ imd_join <- left_join(lsoa, imd, by = c("LSOA11CD" = "lsoa_code_2011" )) %>%
 
 #write.csv(imd_join_df, "imd_with_geometry.csv", row.names = FALSE)
 
+# add flipped decile column
+max_imd_decile <- max(imd_join$index_of_multiple_deprivation_imd_decile)
+imd_join <- imd_join %>%
+  mutate(index_of_multiple_deprivation_imd_decile_flipped = max_imd_decile + 1 - index_of_multiple_deprivation_imd_decile)
+
 summary(imd_join)
 ```
 
 ```{r plot the imd with decile}
 #plot the data sets
-imd_map <- ggplot(imd_join, aes(fill = index_of_multiple_deprivation_imd_decile)) +
+imd_map <- ggplot(imd_join, aes(fill = index_of_multiple_deprivation_imd_decile_flipped)) +
   geom_sf(color = "transparent") +
-  scale_fill_viridis_c() +  
+  scale_fill_viridis_c(option = "D", direction = -1) +  
   labs(title = "Index of Multiple Deprivation ", fill = "IMD Decile") +
 
 #combine with borough
-#  geom_sf(data = borough, color = "white", fill = NA, size = 0.5) +
+  geom_sf(data = borough, color = "white", fill = NA, size = 0.5) +
 
 # Remove the grid
   theme_void() +
 
 # Add note
   annotate("text", x = -Inf, y = -Inf, hjust = 0, vjust = -0.25, 
-         label = "Note: 1 is the most deprived, 10 is the least deprived",
+         label = "Note: 1 is the least deprived, 10 is the most deprived",
          size = 3, color = "black")
   
 imd_map
 ```
+```{r}
+ggsave("D:/Fajrun/MSc Plan/3. Universities/University College London/Lectures/T2 GEOG0162 CDV/W3/Cartography-Blog-2/output/IMD_map2.jpg", plot = imd_map, width = 6.25, height = 4.25, dpi = 200)
+
+```
+
 
 
 
